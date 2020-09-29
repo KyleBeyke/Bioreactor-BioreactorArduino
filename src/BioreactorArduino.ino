@@ -278,7 +278,7 @@ void shaftDirection(int value) {
 }
 
 int calcSteps(int steps) {
-  if (MICROSTEPS > 0) {
+  if (MICROSTEPS != 0) {
     steps = steps * MICROSTEPS;
     return steps;
   }
@@ -286,20 +286,18 @@ int calcSteps(int steps) {
 }
 
 int calcRotationSteps(float rotations) {
-  if (MICROSTEPS > 0) {
-    int steps = rotations * (360 / STEP_ANGLE) * MICROSTEPS;  //NOT a div-by-0
-    return steps;
-  }
   int steps = rotations * (360 / STEP_ANGLE);
+  if (MICROSTEPS != 0) {
+    int steps = steps * MICROSTEPS;  //NOT a div-by-0
+  }
   return steps;
 }
 
 int calcStepSpeed(int steps_per_second) { // per second
   unsigned int step_speed;
   step_speed = (1000000 / steps_per_second) / 2;
-  if (MICROSTEPS > 0) {
+  if (MICROSTEPS != 0) {
     step_speed = step_speed / MICROSTEPS;
-    return step_speed;
   }
   return step_speed;
 }
@@ -429,22 +427,13 @@ void executeCommand(String command_raw) {
     String response = "CURFEEDPPM,";
     response = response + getCO2Minimum();
     Serial.println(response);
-    if(getValidation()) {}
-    else {
-      Serial.println("ERROR,Controller did not receive validation");
-      while(!getValidation()) {}
-    }
+    while(!getValidation()) {}
   } else if (command_raw == "get-feed-rotations") {
     sendValidation(true);
     String response = "CURFEEDROT,";
     response = response + getFeedRotations();
     Serial.println(response);
-    if (getValidation()) {}
-    else {
-      sendValidation(false);
-      Serial.println("ERROR,Controller did not receive validation");
-      while(!getValidation()) {}
-    }
+    while (!getValidation()) {}
   } else {
     char separator[] = ",";
     String command = getValue(command_raw, separator, 0);
@@ -461,19 +450,11 @@ void executeCommand(String command_raw) {
       if(setFeedRotations(value)){
         Serial.println("SUCCESS,Feed rotations set");
         while(!getValidation()) {}
-      } else {
-        sendValidation(false);
-        Serial.println("ERROR,EEPROM save failed for command set-feed-rotations");
-        while(!getValidation()) {}
       }
     } else if (command == "set-feed-ppm" && value > 499 && value < 5001) {
       sendValidation(true);
       if (setCO2Minimum(value)) {
         Serial.println("SUCCESS,Feed PPM threshhold set");
-        while(!getValidation()) {}
-      } else {
-        sendValidation(false);
-        Serial.println("ERROR,EEPROM save failed for command set-feed-ppm");
         while(!getValidation()) {}
       }
     } else {
@@ -491,13 +472,13 @@ void checkCommand() {
   }
 }
 
-void notifyFeed(boolean state) {
+void notifyRead(boolean state) {
   if (state == true) {
-    Serial.println("FEEDING");
+    Serial.println("READING");
     while(!getValidation()) {}
   }
   if (state == false) {
-    Serial.println("FEEDDONE");
+    Serial.println("READDONE");
     while(!getValidation()) {}
   }
 }
@@ -532,8 +513,8 @@ void setup() {
 }
 
 void loop() {
-  controlStart = millis();
   boolean rollover = false;
+  controlStart = millis();
   checkCommand();
   airFlowBioreactor();  // Return to normal flow conditions, CO2 -> Sensor
   if ((counter - previousCounter) >= (interval * .70)) {
@@ -543,16 +524,16 @@ void loop() {
     airFlowBioreactor();  // Restore to normal airflow conditions
   }
   else if ((counter - previousCounter) >= (interval)) {
+    notifyRead(true);
     co2Current = getAveragePPM(SENSOR_TIMEOUT);
     tempCurrent = getTemp();
     if(co2Current < co2_minimum) {  // If current CO2 levels are below minimum
-      notifyFeed(true);
       feedOperation(2000); // Perform a feed operation
-      notifyFeed(false);
       while (!sendDataWithFeed(co2Current, tempCurrent)) {}  // Send data including current feed rotations
     } else {
       while (!sendData(co2Current, tempCurrent)) {}  // Send data sans feed rotations
     }
+    notifyRead(false);
     previousCounter = 0;
     counter = 0;
     rollover = true;
