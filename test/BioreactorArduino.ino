@@ -385,6 +385,59 @@ void sendValidation(boolean status) {
   }
 }
 
+void executeCommandCharArray() {
+  char command_raw[25];
+  if (Serial.available() > 0) {
+    Serial.readBytesUntil('\n', command_raw, sizeof(command_raw));
+  }
+  if (strcmp(command_raw, "get-feed-ppm") == 0) {
+    sendValidation(true);
+    String response = "CURFEEDPPM,";
+    response = response + getCO2Minimum();
+    Serial.println(response);
+    while(!getValidation()) {}
+  } else if (strcmp(command_raw, "get-feed-rotations") == 0) {
+    sendValidation(true);
+    String response = "CURFEEDROT,";
+    response = response + getFeedRotations();
+    Serial.println(response);
+    while (!getValidation()) {}
+  } else {
+    int value = 0;
+    char command[20];
+    char separator[] = ",";
+    char *token = strtok(command_raw, separator);
+    int size = sizeof(token);
+    strncpy(command, token, size);
+    token = strtok(NULL, separator);
+    value = atoi(token);
+    if (strcmp(command, "reset") == 0 && value == 1) {
+      sendValidation(true);
+      Serial.println("SUCCESS,Controller resetting");
+      while(!getValidation()) {}
+      delay(1000);
+      resetFunc();
+    } else if (strcmp(command, "set-feed-rotations") == 0 && value > 0 && value < 101) {
+      sendValidation(true);
+      if(setFeedRotations(value)){
+        Serial.println("SUCCESS,Feed rotations set");
+        while(!getValidation()) {}
+      }
+    } else if (strcmp(command, "set-feed-ppm") == 0 && value > 499 && value < 5001) {
+      sendValidation(true);
+      if (setCO2Minimum(value)) {
+        Serial.println("SUCCESS,Feed PPM threshhold set");
+        while(!getValidation()) {}
+      }
+    } else {
+      sendValidation(false);
+      Serial.println("ERROR,Command failed to execute");
+      while(!getValidation()) {}
+    }
+  }
+}
+
+
 String getValue(String data, char separator[], int index) //function needed for string parsing
 {
   String values[2];
