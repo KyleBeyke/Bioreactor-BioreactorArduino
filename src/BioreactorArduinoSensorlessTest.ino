@@ -559,7 +559,7 @@ void setup() {
   // vsense = driver.vsense();  // Set vsense
   // shaftDirection(CLOCKWISE);  // Set shaft direction
   // relay_init();  // Initialize relay
-  delay(1000);  // Allow for everything to initialize...
+  // delay(1000);  // Allow for everything to initialize...
   while(!handshake()) {} // Wait for Raspi to confirm it is connected
   executeCommandCharArray();   // Check for command, if no command in waiting, ensure
   memStateHandler();  // Check EEPROM for previously set feed defaults, update accordingly
@@ -572,7 +572,7 @@ void loop() {
   airFlowBioreactor();  // Return to normal flow conditions, CO2 -> Sensor
   if ((counter - previousCounter) >= (interval)) {
     notifyRead(true);
-    co2Current = random(400,5001);
+    co2Current = random(400,1001);
     tempCurrent = random(10,31);
     if(co2Current < co2_minimum) {  // If current CO2 levels are below minimum
       delay(5000); // Perform a feed operation
@@ -593,72 +593,72 @@ void loop() {
   counter++;
 }
 
-    /*ANTIQUATED FUNCTION EXAMPLES FOR REFERENCE*/
-      /*These provie examples of how to use stall detection */
-/*boolean lowerPlunger() {
-  digitalWrite(DIR_PIN, HIGH); //Set rotation counter clockwise
-
-  uint32_t drv_status = driver.DRV_STATUS();
-  unsigned long init = millis();
-  for (int i = 0; i <= 255; i++) {
-    drv_status = driveMotor(drv_status);
-  }
-  unsigned long start = millis();
-  while (millis() <= start + STALL_TIMEOUT) {
-    drv_status = driver.DRV_STATUS();
-    while((drv_status & SG_RESULT_bm)>>SG_RESULT_bp > STALL_LIMIT){
-      drv_status = driveMotor(drv_status);
-    }
-    for (int i = 0; i <= 63; i++) {
-      drv_status = driveMotor(drv_status);
-    }
-    unsigned long interval = millis() - init;
-    Serial.println(interval);
-    if (interval >= INTERVAL_LIMIT) {
-      return true;
-      break;
-    }
-    else {
-      drv_status = driver.DRV_STATUS();
-      while((drv_status & SG_RESULT_bm)>>SG_RESULT_bp > STALL_LIMIT){
-        drv_status = driveMotor(drv_status);
-      }
-    }
-  }
-  return false;
-}
-
-boolean raisePlunger() {
-  digitalWrite(DIR_PIN, LOW); //Set rotation clockwise
-
-  uint32_t drv_status = driver.DRV_STATUS();
-  unsigned long init = millis();
-  for (int i = 0; i <= 255; i++) {
-    drv_status = driveMotor(drv_status);
-  }
-
-  unsigned long start = millis();
-  while (millis() <= start + STALL_TIMEOUT) {
-    drv_status = driver.DRV_STATUS();
-    while((drv_status & SG_RESULT_bm)>>SG_RESULT_bp > STALL_LIMIT){
-      drv_status = driveMotor(drv_status);
-    }
-    for (int i = 0; i <= 63; i++) {
-      drv_status = driveMotor(drv_status);
-    }
-    unsigned long interval = millis() - init;
-    Serial.println(interval);
-    if (interval >= INTERVAL_LIMIT) {
-      return true;
-      break;
-    }
-    else {
-      drv_status = driver.DRV_STATUS();
-      while((drv_status & SG_RESULT_bm)>>SG_RESULT_bp > STALL_LIMIT){
-        drv_status = driveMotor(drv_status);
-      }
-    }
-  }
-
-  return false;
-}*/
+/*ANTIQUATED FUNCTION EXAMPLES FOR REFERENCE*/
+/*These provie examples of how to use stall detection */
+// boolean lowerPlunger() {
+//   digitalWrite(DIR_PIN, HIGH); //Set rotation counter clockwise
+//
+//   uint32_t drv_status = driver.DRV_STATUS();
+//   unsigned long init = millis();
+//   for (int i = 0; i <= 255; i++) {
+//     drv_status = driveMotor(drv_status);
+//   }
+//   unsigned long start = millis();
+//   while (millis() <= start + STALL_TIMEOUT) {
+//     drv_status = driver.DRV_STATUS();
+//     while((drv_status & SG_RESULT_bm)>>SG_RESULT_bp > STALL_LIMIT){
+//       drv_status = driveMotor(drv_status);
+//     }
+//     for (int i = 0; i <= 63; i++) {
+//       drv_status = driveMotor(drv_status);
+//     }
+//     unsigned long interval = millis() - init;
+//     Serial.println(interval);
+//     if (interval >= INTERVAL_LIMIT) {
+//       return true;
+//       break;
+//     }
+//     else {
+//       drv_status = driver.DRV_STATUS();
+//       while((drv_status & SG_RESULT_bm)>>SG_RESULT_bp > STALL_LIMIT){
+//         drv_status = driveMotor(drv_status);
+//       }
+//     }
+//   }
+//   return false;
+// }
+//
+// boolean raisePlunger() {
+//   digitalWrite(DIR_PIN, LOW); //Set rotation clockwise
+//
+//   uint32_t drv_status = driver.DRV_STATUS();
+//   unsigned long init = millis();
+//   for (int i = 0; i <= 255; i++) {
+//     drv_status = driveMotor(drv_status);
+//   }
+//
+//   unsigned long start = millis();
+//   while (millis() <= start + STALL_TIMEOUT) {
+//     drv_status = driver.DRV_STATUS();
+//     while((drv_status & SG_RESULT_bm)>>SG_RESULT_bp > STALL_LIMIT){
+//       drv_status = driveMotor(drv_status);
+//     }
+//     for (int i = 0; i <= 63; i++) {
+//       drv_status = driveMotor(drv_status);
+//     }
+//     unsigned long interval = millis() - init;
+//     Serial.println(interval);
+//     if (interval >= INTERVAL_LIMIT) {
+//       return true;
+//       break;
+//     }
+//     else {
+//       drv_status = driver.DRV_STATUS();
+//       while((drv_status & SG_RESULT_bm)>>SG_RESULT_bp > STALL_LIMIT){
+//         drv_status = driveMotor(drv_status);
+//       }
+//     }
+//   }
+//
+//   return false;
+// }
