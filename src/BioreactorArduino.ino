@@ -17,6 +17,8 @@
 #include <TMC2130Stepper.h>
 #include <TMC2130Stepper_REGDEFS.h>
 #include <EEPROM.h>
+#include <Wire.h>
+#include <SparkFun_SCD30_Arduino_Library.h>
   ///* DEFINITIONS *///
     /* EEPROM MEMORY ADDRESS DEFINITIONS */
 #define FEED_ROTATIONS_MEM  2   // EEPROM address for feed_rotations
@@ -48,14 +50,19 @@
 #define DIR_PIN   10
 #define STEP_PIN  11
 #define CS_PIN    12
+    /* SCD30 CO2 SENSOR DEFINITIONS */
+#define ALTITUDE          182  //general elevation of nashville in meters
+#define CO2_REFRESH_RATE  2  //measured in seconds
     /* BIOREACTOR CONTROL DEFINITIONS */
 #define OPERATION_INTERVAL  10  // minutes
 #define FEED_RPM            60  // feed auger revolutions per minute
 #define SENSOR_TIMEOUT      10  // seconds
   ///* GLOBALS *///
     // Connections
+boolean co2_sensor_flag = true;  //True for SCD30, false for old CO2 sensor
 OneWire oneWire(ONE_WIRE_BUS); //One wire library to avoid a  pullup resistor
 DallasTemperature tempSensor(&oneWire); //Temp sensor connection
+SCD30 airSensor;
     //Select 2 digital pins as SoftwareSerial's Tx and Rx. For example, Rx=12 Tx=13
 NDIR_SoftwareSerial mySensor(NDIR_TX_PIN, NDIR_RX_PIN);  // CO2 sensor connection
 TMC2130Stepper driver = TMC2130Stepper(CS_PIN);  // TMC2130 driver connection
@@ -75,7 +82,6 @@ int co2_minimum = 500;
 int feed_rotations = 1;
     // Driver control
 bool vsense;
-
   ///* FUNCTIONS *///
     // Reset function used for resetting microcontroller
 void (* resetFunc) (void) = 0;  // Declare reset function @ address 0
@@ -166,8 +172,13 @@ void airFlowCalibration() {
   }
 
 void calibrateCO2Sensor() {
-  mySensor.calibrateZero(); //Calibrate zero (400ppm)
-  delay(1000);  // Wait to ensure calibration is complete
+  if (co2_sensor_flag == true) {
+    airSensor.setForcedRecalibrationFactor(400);
+    delay(1000);
+  } else {
+    mySensor.calibrateZero(); //Calibrate zero (400ppm)
+    delay(1000);  // Wait to ensure calibration is
+  }
 }
 
 void airFlowBioreactor() {
@@ -189,24 +200,39 @@ int getAveragePPM(int delay_interval_sec) {
   int total = 0;
   int readings[10];
   unsigned long startMillis = millis(); //Get time
-  while (i < 10) {
-      unsigned long currentMillis = millis(); //compare time since last attempt
-      if (currentMillis - startMillis <= delay_interval_sec) { //If we are still within the allowable interval,
-        if (mySensor.measure()) { //Try to connect get measurements from the sensor
-            readings[i] = mySensor.ppm;
-            i++;
+  if (co2_sensor_flag == true) {
+    //airSensor.setAmbientPressure(pressure_reading);
+    if (airSensor.dataAvailable()) {
+      int co2 = airSensor.getCO2();  //Sensor refreshes data every 2 seconds
+      delay(3000);  //Wait, then read again
+      co2 = airSensor.getCO2();
+      return co2;
+    } else {
+      Serial.println("ERROR,CO2 Sensor failed! Initiating controller reset...");
+      delay(1000);
+      resetFunc();
+    }
+  }
+  if (co2_sensor_flag == false) {
+    while (i < 10) {
+        unsigned long currentMillis = millis(); //compare time since last attempt
+        if (currentMillis - startMillis <= delay_interval_sec) { //If we are still within the allowable interval,
+          if (mySensor.measure()) { //Try to connect get measurements from the sensor
+              readings[i] = mySensor.ppm;
+              i++;
+          }
+        } else {
+          Serial.println("ERROR,CO2 Sensor failed! Initiating controller reset...");
+          delay(1000);
+          resetFunc(); //Reset the arduino and peripherals if it takes longer than the assigned interval to read the sensor
         }
-      } else {
-        Serial.println("ERROR,CO2 Sensor failed! Initiating controller reset...");
-        delay(1000);
-        resetFunc(); //Reset the arduino and peripherals if it takes longer than the assigned interval to read the sensor
-      }
+    }
+    for (int j = 0; j < 10; j++) {
+      total = total + readings[j];
+    }
+    average = total / (i+1);
+    return average;
   }
-  for (int j = 0; j < 10; j++) {
-    total = total + readings[j];
-  }
-  average = total / (i+1);
-  return average;
 }
 
 float getTemp() {
@@ -545,12 +571,26 @@ void setup() {
     resetFunc();
   }
   tempSensor.begin();  // Init the temp sensor
-  if (mySensor.begin()) {  // Init the CO2 sensor
-    delay(10000); //wait for sensor to come up
-  } else {
-    Serial.println("ERROR,CO2 Sensor did not initialize. Reseting microcontroller...");
-    delay(1000);
-    resetFunc();
+  if (co2_sensor_flag == true) {
+      Wire.begin();
+    if (airSensor.begin() == false)
+    {
+      Serial.println("ERROR,CO2 Sensor did not initialize. Reseting microcontroller...");
+      delay(1000);
+      resetFunc();
+    }
+    airSensor.setAutoSelfCalibration(false);
+    airSensor.setAltitudeCompensation(ALTITUDE);
+    airSensor.setMeasurementInterval(CO2_REFRESH_RATE);
+  }
+  else {
+    if (mySensor.begin()) {  // Init the CO2 sensor
+      delay(10000); //wait for sensor to come up
+    } else {
+      Serial.println("ERROR,CO2 Sensor did not initialize. Reseting microcontroller...");
+      delay(1000);
+      resetFunc();
+    }
   }
   initFeedMotor();  // Init feed motor pin control
   configDriver();  // Configure feed motor driver
