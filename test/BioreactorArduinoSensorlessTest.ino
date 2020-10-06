@@ -403,7 +403,7 @@ void executeCommandCharArray() {
       while (!getValidation()) {}
     } else {
       int value = 0;
-      char command[20];
+      char command[25];
       char separator[] = ",";
       char *token = strtok(command_raw, separator);
       int size = sizeof(token);
