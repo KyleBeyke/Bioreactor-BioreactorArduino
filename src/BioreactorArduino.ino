@@ -610,13 +610,13 @@ void loop() {
   controlStart = millis();
   checkCommand();
   airFlowBioreactor();  // Return to normal flow conditions, CO2 -> Sensor
-  if ((counter - previousCounter) >= (interval * .70)) {
+  if (counter >= (interval * .70)) {
     airFlowCalibration();  // Invert air flow condition, Fresh air -> Sensor
-  } else if ((counter - previousCounter) >= (interval * .80)) {
+  } else if (counter >= (interval * .80)) {
     calibrateCO2Sensor();  // Calibrate CO2 sensor
     airFlowBioreactor();  // Restore to normal airflow conditions
   }
-  else if ((counter - previousCounter) >= (interval)) {
+  else if (counter >= (interval)) {
     notifyRead(true);
     co2Current = getAveragePPM(SENSOR_TIMEOUT);
     tempCurrent = getTemp();
@@ -627,7 +627,6 @@ void loop() {
       while (!sendData(co2Current, tempCurrent)) {}  // Send data sans feed rotations
     }
     notifyRead(false);
-    previousCounter = 0;
     counter = 0;
     rollover = true;
   }
